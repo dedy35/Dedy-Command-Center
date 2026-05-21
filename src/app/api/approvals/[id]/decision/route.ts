@@ -48,5 +48,19 @@ export async function POST(request: Request, { params }: RouteParams) {
     afterJson: (result) => result,
   });
 
+  await withAuditedMutation({
+    action: "approve",
+    entityTable: "ai_outputs",
+    entityId: existing.aiOutputId,
+    run: () =>
+      db.aiOutput.update({
+        where: { id: existing.aiOutputId },
+        data: {
+          status: body.status === "approved" ? "approved" : "rejected",
+        },
+      }),
+    afterJson: (result) => result,
+  });
+
   return NextResponse.json({ ok: true, approval });
 }

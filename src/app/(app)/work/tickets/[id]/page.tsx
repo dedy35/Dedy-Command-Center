@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 
+import { listPromptTemplates } from "@/config/prompts";
+import { AiDraftPanel } from "@/components/work/ai-draft-panel";
 import { TicketLinkLifeEventForm } from "@/components/work/ticket-link-life-event-form";
 import { TicketNoteForm } from "@/components/work/ticket-note-form";
 import { TicketUpdateForm } from "@/components/work/ticket-update-form";
@@ -37,13 +39,33 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
   }
 
   const linkedLifeEventIds = new Set(ticket.lifeEvents.map((item) => item.lifeEventId));
-  const availableLifeEvents = await db.lifeEvent.findMany({
-    where: {
-      id: { notIn: Array.from(linkedLifeEventIds) },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const [availableLifeEvents, aiOutputs] = await Promise.all([
+    db.lifeEvent.findMany({
+      where: {
+        id: { notIn: Array.from(linkedLifeEventIds) },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    ticket.sourceId
+      ? db.aiOutput.findMany({
+          where: { sourceId: ticket.sourceId },
+          include: {
+            approvals: {
+              orderBy: { createdAt: "desc" },
+              take: 3,
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const defaultAiInput =
+    ticket.source?.contentText ||
+    ticket.notes[0]?.content ||
+    `${ticket.title}\nstatus=${ticket.status}`;
 
   return (
     <div className="space-y-6">
@@ -80,6 +102,30 @@ export default async function TicketDetailPage({ params }: TicketDetailPageProps
         ) : (
           <p className="text-sm text-slate-500">No pasted Redmine source saved for this ticket.</p>
         )}
+      </Card>
+
+      <Card className="space-y-4">
+        <div>
+          <CardTitle>AI Draft Panel</CardTitle>
+          <CardDescription>
+            Select <code>prompt_key</code>, generate draft with mock local AI provider, then
+            approve/reject/edit/copy. No auto-send is implemented.
+          </CardDescription>
+        </div>
+        <AiDraftPanel
+          moduleName="work"
+          sourceId={ticket.sourceId}
+          prompts={listPromptTemplates("work")}
+          defaultInputText={defaultAiInput}
+          initialOutputs={aiOutputs.map((output) => ({
+            ...output,
+            createdAt: output.createdAt.toISOString(),
+            approvals: output.approvals.map((approval) => ({
+              ...approval,
+              createdAt: approval.createdAt.toISOString(),
+            })),
+          }))}
+        />
       </Card>
 
       <Card className="space-y-4">
