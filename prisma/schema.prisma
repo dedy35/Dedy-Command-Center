@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SensitivityLevel {
+  public
+  internal
+  private
+  confidential
+}
+
+enum SourceType {
+  text
+  photo
+  pdf
+  url
+  email
+  chat
+  manual
+}
+
+enum AiOutputStatus {
+  draft
+  approved
+  rejected
+  superseded
+}
+
+enum ApprovalActionType {
+  copy
+  send
+  update
+  export
+  delete
+  submit
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum AuditActor {
+  user
+  system
+  ai
+}
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  displayName String   @map("display_name")
+  email       String?  @unique
+  timezone    String   @default("Asia/Tokyo")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt], map: "idx_users_created")
+  @@map("users")
+}
+
+model LifeEvent {
+  id          String           @id @default(uuid()) @db.Uuid
+  eventDate   DateTime         @map("event_date") @db.Date
+  module      String
+  title       String
+  summary     String?
+  sourceId    String?          @map("source_id") @db.Uuid
+  sensitivity SensitivityLevel @default(internal)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  source Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([eventDate], map: "idx_life_events_date")
+  @@index([module], map: "idx_life_events_module")
+  @@map("life_events")
+}
+
+model Source {
+  id          String           @id @default(uuid()) @db.Uuid
+  sourceType  SourceType       @map("source_type")
+  contentText String?          @map("content_text")
+  fileId      String?          @map("file_id") @db.Uuid
+  origin      String?
+  sensitivity SensitivityLevel @default(private)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  file       Attachment? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  lifeEvents LifeEvent[]
+  aiOutputs  AiOutput[]
+
+  @@index([sourceType], map: "idx_source_type")
+  @@index([createdAt], map: "idx_sources_created")
+  @@map("sources")
+}
+
+model Attachment {
+  id        String   @id @default(uuid()) @db.Uuid
+  filePath  String   @map("file_path")
+  fileName  String   @map("file_name")
+  mimeType  String   @map("mime_type")
+  sizeBytes BigInt   @map("size_bytes")
+  sha256    String?  @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sources Source[]
+
+  @@map("attachments")
+}
+
+model AiOutput {
+  id         String         @id @default(uuid()) @db.Uuid
+  sourceId   String?        @map("source_id") @db.Uuid
+  module     String
+  promptKey  String         @map("prompt_key")
+  model      String?
+  outputType String         @map("output_type")
+  content    String
+  status     AiOutputStatus @default(draft)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  source    Source?    @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  approvals Approval[]
+
+  @@index([sourceId], map: "idx_ai_source")
+  @@index([module], map: "idx_ai_module")
+  @@index([outputType], map: "idx_output_type")
+  @@index([status], map: "idx_ai_status")
+  @@map("ai_outputs")
+}
+
+model Approval {
+  id           String             @id @default(uuid()) @db.Uuid
+  aiOutputId   String             @map("ai_output_id") @db.Uuid
+  actionType   ApprovalActionType @map("action_type")
+  status       ApprovalStatus     @default(pending)
+  approvedAt   DateTime?          @map("approved_at") @db.Timestamptz(6)
+  approvalNote String?            @map("approval_note")
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  aiOutput AiOutput @relation(fields: [aiOutputId], references: [id], onDelete: Cascade)
+
+  @@index([aiOutputId], map: "idx_approval_output")
+  @@index([status], map: "idx_approval_status")
+  @@map("approvals")
+}
+
+model AuditLog {
+  id          String     @id @default(uuid()) @db.Uuid
+  actor       AuditActor
+  action      String
+  entityTable String     @map("entity_table")
+  entityId    String?    @map("entity_id") @db.Uuid
+  beforeJson  Json?      @map("before_json")
+  afterJson   Json?      @map("after_json")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([actor], map: "idx_audit_actor")
+  @@index([action], map: "idx_audit_action")
+  @@index([entityTable, entityId], map: "idx_audit_entity")
+  @@index([createdAt], map: "idx_audit_created")
+  @@map("audit_logs")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  color     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  entityTags EntityTag[]
+
+  @@map("tags")
+}
+
+model EntityTag {
+  id          String   @id @default(uuid()) @db.Uuid
+  tagId       String   @map("tag_id") @db.Uuid
+  entityTable String   @map("entity_table")
+  entityId    String   @map("entity_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, entityTable, entityId], map: "uq_entity_tag")
+  @@index([entityTable, entityId], map: "idx_entity_tags_entity")
+  @@map("entity_tags")
+}
