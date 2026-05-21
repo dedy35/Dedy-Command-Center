@@ -32,6 +32,9 @@ services:
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Dedy Command Center}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       NEXT_PUBLIC_DEFAULT_TIMEZONE: ${NEXT_PUBLIC_DEFAULT_TIMEZONE:-Asia/Tokyo}
+      AUTH_EMAIL: ${AUTH_EMAIL:-dedy@local.dev}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-change_me_in_local_env}
+      AUTH_SECRET: ${AUTH_SECRET:-change_this_to_a_long_random_secret_at_least_32_chars}
       NEXT_TELEMETRY_DISABLED: "1"
     ports:
       - "3000:3000"

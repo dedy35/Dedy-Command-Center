@@ -1,6 +1,6 @@
 # Dedy Command Center
 
-Production-ready personal web app foundation built with Next.js App Router, TypeScript, Tailwind CSS, ESLint, and Prettier.
+Production-ready personal web app foundation built with Next.js App Router, TypeScript, Tailwind CSS, ESLint, Prettier, Docker Compose, PostgreSQL, and Prisma.
 
 ## Tech Stack
 
@@ -9,6 +9,8 @@ Production-ready personal web app foundation built with Next.js App Router, Type
 - Tailwind CSS v4
 - ESLint
 - Prettier (+ Tailwind plugin)
+- PostgreSQL + Prisma ORM
+- Docker Compose
 
 ## Getting Started
 
@@ -24,35 +26,50 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Run development server:
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000` and you will be redirected to `/dashboard`.
-
-## Local Database With Docker Compose
-
-1. Start PostgreSQL:
+3. Start PostgreSQL:
 
 ```bash
 docker compose up -d db
 ```
 
-2. Run migration:
+4. Run migration and seed:
 
 ```bash
 npm run db:migrate
-```
-
-3. Seed initial user:
-
-```bash
 npm run db:seed
 ```
 
-4. (Optional) Run full app stack with Docker:
+5. Run development server:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000` and sign in with:
+
+- Email: `AUTH_EMAIL` in your `.env.local`
+- Password: `AUTH_PASSWORD` in your `.env.local`
+
+## Authentication & Security
+
+- Single-user authentication is enforced with JWT httpOnly cookie session (`dcc_session`).
+- Middleware protects all app routes and private APIs from unauthenticated access.
+- Admin audit log page: `/admin/audit-logs`.
+
+## Audited Action Endpoints
+
+All mutable/action-sensitive operations below write to `audit_logs`:
+
+- `POST /api/tags` (`create`)
+- `PUT /api/tags` (`update`)
+- `DELETE /api/tags` (`delete`)
+- `POST /api/approvals/[id]/decision` (`approve`)
+- `POST /api/export` (`export`)
+- `POST /api/ai/run` (`ai_run`)
+
+## Local Database With Docker Compose
+
+Run full app + DB stack with Docker:
 
 ```bash
 docker compose up -d
@@ -61,6 +78,7 @@ docker compose up -d
 ## Scripts
 
 - `npm run dev` - start local development server
+- `npm run dev:docker` - run dev server bound for Docker network
 - `npm run build` - production build
 - `npm run start` - run built app
 - `npm run lint` - run ESLint

@@ -9,6 +9,8 @@ export const siteConfig = {
     { label: "Work", href: "/work" },
     { label: "More", href: "/more" },
   ],
+  adminNavItems: [{ label: "Audit Logs", href: "/admin/audit-logs" }],
 } as const;
 
 export type NavItem = (typeof siteConfig.navItems)[number];
+export type AdminNavItem = (typeof siteConfig.adminNavItems)[number];

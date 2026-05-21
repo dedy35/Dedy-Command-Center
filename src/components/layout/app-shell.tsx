@@ -1,14 +1,16 @@
 import { Search, Sparkles } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
+import type { SessionUser } from "@/types/auth";
 
 import { NavLink } from "./nav-link";
 
 type AppShellProps = {
   children: React.ReactNode;
+  user: SessionUser;
 };
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, user }: AppShellProps) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl">
@@ -29,9 +31,29 @@ export function AppShell({ children }: AppShellProps) {
             ))}
           </nav>
 
-          <div className="mt-auto rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            <p className="font-medium text-slate-800">System Rule</p>
-            <p className="mt-1">
+          <div className="mt-6 space-y-1">
+            <p className="px-3 text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">
+              Admin
+            </p>
+            {siteConfig.adminNavItems.map((item) => (
+              <NavLink key={item.href} href={item.href} label={item.label} />
+            ))}
+          </div>
+
+          <div className="mt-auto space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            <div>
+              <p className="font-medium text-slate-800">Signed In</p>
+              <p className="mt-1 text-xs text-slate-600">{user.email}</p>
+            </div>
+            <form action="/api/auth/logout" method="POST">
+              <button
+                type="submit"
+                className="inline-flex h-9 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-100"
+              >
+                Sign out
+              </button>
+            </form>
+            <p className="text-xs text-slate-500">
               External send/update/export actions stay approval-gated by design.
             </p>
           </div>
@@ -42,19 +64,27 @@ export function AppShell({ children }: AppShellProps) {
             <div className="mx-auto flex w-full items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold tracking-tight">Dedy Command Center</p>
-                <p className="text-xs text-slate-500">Foundation Phase</p>
+                <p className="text-xs text-slate-500">Authenticated Session</p>
               </div>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
-                aria-label="Open command palette"
-              >
-                <Search className="h-4 w-4" />
-                <span className="hidden sm:inline">Search</span>
-                <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">
-                  Ctrl+K
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/admin/audit-logs"
+                  className="hidden rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sm:inline-flex"
+                >
+                  Audit Logs
+                </a>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+                  aria-label="Open command palette"
+                >
+                  <Search className="h-4 w-4" />
+                  <span className="hidden sm:inline">Search</span>
+                  <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">
+                    Ctrl+K
+                  </span>
+                </button>
+              </div>
             </div>
           </header>
 
