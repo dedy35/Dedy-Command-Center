@@ -75,6 +75,16 @@ enum TicketNoteType {
   internal_note
 }
 
+enum WorkLogCategory {
+  coding
+  analysis
+  meeting
+  testing
+  documentation
+  support
+  planning
+}
+
 model User {
   id          String   @id @default(uuid()) @db.Uuid
   displayName String   @map("display_name")
@@ -149,8 +159,9 @@ model AiOutput {
   status     AiOutputStatus @default(draft)
   createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  source    Source?    @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  approvals Approval[]
+  source       Source?       @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  approvals    Approval[]
+  achievements Achievement[]
 
   @@index([sourceId], map: "idx_ai_source")
   @@index([module], map: "idx_ai_module")
@@ -231,6 +242,7 @@ model Ticket {
   source     Source?           @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   notes      TicketNote[]
   lifeEvents TicketLifeEvent[]
+  workLogs   WorkLog[]
 
   @@index([ticketNo], map: "idx_ticket_no")
   @@index([status], map: "idx_ticket_status")
@@ -268,4 +280,47 @@ model TicketLifeEvent {
   @@index([ticketId], map: "idx_ticket_life_events_ticket")
   @@index([lifeEventId], map: "idx_ticket_life_events_life_event")
   @@map("ticket_life_events")
+}
+
+model WorkLog {
+  id              String          @id @default(uuid()) @db.Uuid
+  workDate        DateTime        @map("work_date") @db.Date
+  category        WorkLogCategory @default(coding)
+  description     String
+  impact          String?
+  relatedTicketId String?         @map("related_ticket_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  relatedTicket Ticket?       @relation(fields: [relatedTicketId], references: [id], onDelete: SetNull)
+  achievements  Achievement[]
+
+  @@index([workDate], map: "idx_work_logs_date")
+  @@index([category], map: "idx_work_logs_category")
+  @@index([relatedTicketId], map: "idx_work_logs_ticket")
+  @@index([createdAt], map: "idx_work_logs_created")
+  @@map("work_logs")
+}
+
+model Achievement {
+  id               String   @id @default(uuid()) @db.Uuid
+  workLogId        String   @map("work_log_id") @db.Uuid
+  sourceAiOutputId String?  @map("source_ai_output_id") @db.Uuid
+  starSituation    String?  @map("star_situation")
+  starTask         String?  @map("star_task")
+  starAction       String?  @map("star_action")
+  starResult       String?  @map("star_result")
+  cvBulletEn       String?  @map("cv_bullet_en")
+  cvBulletId       String?  @map("cv_bullet_id")
+  impactQuestions  String[] @map("impact_questions")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workLog        WorkLog   @relation(fields: [workLogId], references: [id], onDelete: Cascade)
+  sourceAiOutput AiOutput? @relation(fields: [sourceAiOutputId], references: [id], onDelete: SetNull)
+
+  @@index([workLogId], map: "idx_achievements_work_log")
+  @@index([sourceAiOutputId], map: "idx_achievements_ai_output")
+  @@index([createdAt], map: "idx_achievements_created")
+  @@map("achievements")
 }
