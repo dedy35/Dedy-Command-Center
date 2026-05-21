@@ -52,6 +52,29 @@ enum AuditActor {
   ai
 }
 
+enum TicketStatus {
+  new
+  analyzing
+  waiting
+  implemented
+  released
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum TicketNoteType {
+  analysis
+  test
+  senior_feedback
+  redmine_comment
+  internal_note
+}
+
 model User {
   id          String   @id @default(uuid()) @db.Uuid
   displayName String   @map("display_name")
@@ -73,7 +96,8 @@ model LifeEvent {
   sensitivity SensitivityLevel @default(internal)
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  source Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  source      Source?           @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  ticketLinks TicketLifeEvent[]
 
   @@index([eventDate], map: "idx_life_events_date")
   @@index([module], map: "idx_life_events_module")
@@ -92,6 +116,7 @@ model Source {
   file       Attachment? @relation(fields: [fileId], references: [id], onDelete: SetNull)
   lifeEvents LifeEvent[]
   aiOutputs  AiOutput[]
+  tickets    Ticket[]
 
   @@index([sourceType], map: "idx_source_type")
   @@index([createdAt], map: "idx_sources_created")
@@ -107,7 +132,8 @@ model Attachment {
   sha256    String?  @unique
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  sources Source[]
+  sources     Source[]
+  ticketNotes TicketNote[]
 
   @@map("attachments")
 }
@@ -189,4 +215,57 @@ model EntityTag {
   @@unique([tagId, entityTable, entityId], map: "uq_entity_tag")
   @@index([entityTable, entityId], map: "idx_entity_tags_entity")
   @@map("entity_tags")
+}
+
+model Ticket {
+  id         String       @id @default(uuid()) @db.Uuid
+  ticketNo   String?      @map("ticket_no")
+  systemName String?      @map("system_name")
+  title      String
+  status     TicketStatus @default(new)
+  riskLevel  RiskLevel    @default(medium) @map("risk_level")
+  sourceId   String?      @map("source_id") @db.Uuid
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  source     Source?           @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  notes      TicketNote[]
+  lifeEvents TicketLifeEvent[]
+
+  @@index([ticketNo], map: "idx_ticket_no")
+  @@index([status], map: "idx_ticket_status")
+  @@index([riskLevel], map: "idx_ticket_risk")
+  @@index([createdAt], map: "idx_tickets_created")
+  @@map("tickets")
+}
+
+model TicketNote {
+  id                     String         @id @default(uuid()) @db.Uuid
+  ticketId               String         @map("ticket_id") @db.Uuid
+  noteType               TicketNoteType @default(analysis) @map("note_type")
+  content                String
+  screenshotAttachmentId String?        @map("screenshot_attachment_id") @db.Uuid
+  createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket               Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  screenshotAttachment Attachment? @relation(fields: [screenshotAttachmentId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId], map: "idx_ticket_notes_ticket")
+  @@index([createdAt], map: "idx_ticket_notes_created")
+  @@map("ticket_notes")
+}
+
+model TicketLifeEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  ticketId    String   @map("ticket_id") @db.Uuid
+  lifeEventId String   @map("life_event_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket    Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  lifeEvent LifeEvent @relation(fields: [lifeEventId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, lifeEventId], map: "uq_ticket_life_event")
+  @@index([ticketId], map: "idx_ticket_life_events_ticket")
+  @@index([lifeEventId], map: "idx_ticket_life_events_life_event")
+  @@map("ticket_life_events")
 }
